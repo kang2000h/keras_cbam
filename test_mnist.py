@@ -76,6 +76,8 @@ if __name__ == "__main__":
 
         model.add(Conv2D(32, 3, 3, activation='relu', input_shape=(28, 28, 1)))
         model.add(Conv2D(32, 3, 3, activation='relu'))
+
+        # bam
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.25))
 
@@ -106,6 +108,8 @@ if __name__ == "__main__":
 
         model.add(Conv2D(32, 3, 3, activation='relu', input_shape=(28, 28, 1)))
         model.add(Conv2D(32, 3, 3, activation='relu'))
+
+        # cbam
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.25))
 

@@ -44,7 +44,7 @@ def BAM(input_tensor, r=16, d=4):
     _mul = Multiply()([input_tensor, bam])
     return _mul
 
-def CBAM(input_tensor, r=16):
+def CBAM(input_tensor, r=16, name=None):
 
     input_dimension_shape = input_tensor.shape # (?, 28, 28, 64)
 
@@ -53,24 +53,26 @@ def CBAM(input_tensor, r=16):
     _w = int(input_dimension_shape[2])
     _c = int(input_dimension_shape[3])
 
-    img_input = Input(shape=(_h, _w, _c))
+    #img_input = Input(shape=(_h, _w, _c))
 
-    def get_channel_attention_module(c_size, r):
-        input_dimension_shape = input_tensor.shape # (?, 28, 28, 64)
+    def get_channel_attention_module(c_size, r, name='c_att_mod'):
+        #input_dimension_shape = input_tensor.shape # (?, 28, 28, 64)
+        #print("debug, get_channel_attention_module", input_dimension_shape)
 
-        _c = int(input_dimension_shape[1])
-        _c_input = Input(shape=(_c))
+        #_c = int(input_dimension_shape[1])
+        _c_input = Input(shape=(c_size, )) #
         x = Activation('relu')(_c_input)
         x = Dense(int(_c/r))(x)
-        x = Dense(_r)(x)
+        x = Dense(c_size)(x)
 
-        model = Model(_c_input, x, name='c_att_mod')
+        model = Model(_c_input, x, name=name)
         return model
 
     # channel attention
     c_gap = GlobalAveragePooling2D()(input_tensor) # (B, C)
     c_gmp = GlobalMaxPooling2D()(input_tensor)
-    c_att_mod = get_channel_attention_module(int(gap.shape[1]), r)
+    #print("debug, get_channel_attention_module", input_tensor) # # (?, 28, 28, 256)
+    c_att_mod = get_channel_attention_module(int(c_gap.shape[1]), r, name=name+'_c_att_mod')
 
     _c_gap = c_att_mod(c_gap)
     _c_gmp = c_att_mod(c_gmp)
@@ -78,16 +80,20 @@ def CBAM(input_tensor, r=16):
     x = Add()([_c_gap, _c_gmp])
     x = Activation('sigmoid')(x) # (B, C)
     x = RepeatVector(_h*_w)(x)
+    #print("debug, RepeatVector, x", x) # (?, 784, 16)
     x = Reshape([_h, _w, _c])(x)
-    f_ = Multiply()(img_input, x)
+    f_ = Multiply()([input_tensor, x])
 
     # spatial attention
     s_ap = Lambda(lambda x:backend.mean(x, axis=-1, keepdims=True))(f_)
     s_mp = Lambda(lambda x:backend.max(x, axis=-1, keepdims=True))(f_)
-    x = Concatenate(axis=1)([s_ap, s_mp])
-
+    #print("debug, s_ap, x", s_ap) # (?, 28, 28, 1)
+    #print("debug, s_mp, x", s_mp) # (?, 28, 28, 1)
+    x = Concatenate(axis=-1)([s_ap, s_mp])
+    #print("debug, Concatenate, x", x)
     x = Conv2D(_c, 7, strides=1, padding="same", data_format='channels_last')(x)
     x = Activation('sigmoid')(x)
-    f__ = Multiply()(f_, x)
+    print("debug, Activation, x", x) # (?, 784, 16)
+    f__ = Multiply()([f_, x])
 
     return f__
